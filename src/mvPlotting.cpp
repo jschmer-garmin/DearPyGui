@@ -2309,11 +2309,13 @@ DearPyGui::set_required_configuration(PyObject* inDict, mvCustomSeriesConfig& ou
 	(*outConfig.value)[1] = ToDoubleVect(PyTuple_GetItem(inDict, 1));
 	outConfig.channelCount = ToInt(PyTuple_GetItem(inDict, 2));
 
+	// Create a vector for space to hold transformed values for the plotter function draw_custom_series().
+	// The content does not matter because it will be overwritten by the plotter function anyway,
+	// so no need to initialize it.
 	for (int i = 0; i < outConfig.channelCount; i++)
 	{
 		outConfig._transformedValues.push_back({});
 		outConfig._transformedValues.back().resize((*outConfig.value)[i].size());
-		memcpy(outConfig._transformedValues.back().data(), (*outConfig.value)[i].data(), sizeof(double) * (*outConfig.value)[i].size());
 	}
 }
 
@@ -2649,11 +2651,33 @@ DearPyGui::set_configuration(PyObject* inDict, mvCustomSeriesConfig& outConfig)
 {
 	if (inDict == nullptr)
 		return;
-	if (PyObject* item = PyDict_GetItemString(inDict, "x")) { (*outConfig.value)[0] = ToDoubleVect(item); }
-	if (PyObject* item = PyDict_GetItemString(inDict, "y")) { (*outConfig.value)[1] = ToDoubleVect(item); }
-	if (PyObject* item = PyDict_GetItemString(inDict, "y1")) { (*outConfig.value)[2] = ToDoubleVect(item); }
-	if (PyObject* item = PyDict_GetItemString(inDict, "y2")) { (*outConfig.value)[3] = ToDoubleVect(item); }
-	if (PyObject* item = PyDict_GetItemString(inDict, "y3")) { (*outConfig.value)[4] = ToDoubleVect(item); }
+
+	auto updateValueFn = [&outConfig](int index, PyObject* item) {
+		// Copy the data series into the corresponding vector
+		auto& valueVect = (*outConfig.value)[index];
+		valueVect = ToDoubleVect(item);
+
+		// in case we try to access an index that doesn't exist -- bail out gracefully
+		// this may happen when the user supplies more y datasets than configured with
+		// the channelCount property.
+		if (index >= outConfig._transformedValues.size())
+			return;
+
+		// and also prepare a vector for transformed values with the same size than
+		// the data series vector for the plotter function to use. The content does
+		// not matter because it will be overwritten by the plotter function anyway.
+		// Note: it is not enough to do this only as part of set_required_configuration() because
+		// set_required_configuration() is not called when using configure_item() to update the
+		// data series for example.
+		auto& transformedValueVect = outConfig._transformedValues[index];
+		transformedValueVect.resize(valueVect.size());
+	};
+
+	if (PyObject* item = PyDict_GetItemString(inDict, "x")) { updateValueFn(0, item); }
+	if (PyObject* item = PyDict_GetItemString(inDict, "y")) { updateValueFn(1, item); }
+	if (PyObject* item = PyDict_GetItemString(inDict, "y1")) { updateValueFn(2, item); }
+	if (PyObject* item = PyDict_GetItemString(inDict, "y2")) { updateValueFn(3, item); }
+	if (PyObject* item = PyDict_GetItemString(inDict, "y3")) { updateValueFn(4, item); }
 	if (PyObject* item = PyDict_GetItemString(inDict, "tooltip")) { outConfig.tooltip = ToBool(item); }
 }
 
