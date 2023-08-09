@@ -40,7 +40,7 @@ def get_platform():
     }
     if sys.platform not in platforms:
         return sys.platform
-    
+
     return platforms[sys.platform]
 
 class BinaryDistribution(Distribution):
@@ -48,7 +48,7 @@ class BinaryDistribution(Distribution):
         return True
 
 class DPGBuildCommand(distutils.cmd.Command):
-  
+
   description = 'DPG Build Command'
   user_options = []
 
@@ -68,14 +68,14 @@ class DPGBuildCommand(distutils.cmd.Command):
         command = [r'set PATH="C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin";"C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin";"C:\Program Files (x86)\Microsoft Visual Studio\2019\Professional\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin";%PATH% && ']
         command.append("mkdir cmake-build-local && ")
         command.append("cd cmake-build-local && ")
-        command.append('cmake .. -G "Visual Studio 16 2019" -A "x64" -DMVDIST_ONLY=True -DMVDPG_VERSION=')
+        command.append('cmake .. -A "x64" -DMVDIST_ONLY=True -DMVDPG_VERSION=')
         command.append(version_number() + " -DMV_PY_VERSION=")
         command.append(str(sys.version_info[0]) + "." + str(sys.version_info[1]) + " && ")
-        command.append("cd .. && cmake --build cmake-build-local --config Release")
+        command.append("cd .. && cmake --build cmake-build-local --config RelWithDebInfo --parallel 16")
         self.announce('Running command: %s' % "Dear PyGui Build for Windows", level=distutils.log.INFO)
         subprocess.check_call(''.join(command), env=os.environ, shell=True)
         src_path = os.path.dirname(os.path.abspath(__file__))
-        shutil.copy("cmake-build-local/DearPyGui/Release/_dearpygui.pyd", src_path +"/output/dearpygui")
+        shutil.copy("cmake-build-local/DearPyGui/RelWithDebInfo/_dearpygui.pyd", src_path +"/output/dearpygui")
 
     elif get_platform() == "Linux":
         command = ["mkdir cmake-build-local; "]
@@ -86,7 +86,7 @@ class DPGBuildCommand(distutils.cmd.Command):
         subprocess.check_call(''.join(command), shell=True)
         src_path = os.path.dirname(os.path.abspath(__file__))
         shutil.copy("cmake-build-local/DearPyGui/_dearpygui.so", src_path +"/output/dearpygui")
-    
+
     elif get_platform() == "OS X":
         command = ["mkdir cmake-build-local; "]
         command.append("cd cmake-build-local; ")
